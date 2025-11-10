@@ -1,5 +1,5 @@
 /*
-Copyright 2025.
+Copyright The Swap Operator authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,22 +17,80 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+type KubeSwapMode string
+
+const (
+	KubeSwapLimited   KubeSwapMode = "Limited"
+	KubeSwapUnlimited KubeSwapMode = "Unlimited"
+)
+
+// KubeletConfig defines swap related configuration for kubelet
+type KubeletConfig struct {
+	// +kubebuilder:validation:Type=string
+	SwapMode KubeSwapMode `json:"swapMode,omitempty"`
+}
+
+type SwapType string
+
+const (
+	FileBasedSwap SwapType = "file"
+	SwapOnZram    SwapType = "zram"
+	SwapOnDisk    SwapType = "disk"
+)
+
+type SwapFile struct {
+	Path string            `json:"path,omitempty"`
+	Size resource.Quantity `json:"size,omitempty"`
+}
+
+type Partition struct {
+	PartLabel string `json:"partlabel,omitempty"`
+}
+
+type SwapZram struct {
+	Size resource.Quantity `json:"size,omitempty"`
+}
+
+type SwapDisk struct {
+	SwapPartition Partition `json:"partition,omitempty"`
+}
+
+type SwapSpec struct {
+	Priority int32 `json:"priority,omitempty"`
+
+	SwapType SwapType `json:"swapType,omitempty"`
+
+	// +optional
+	Disk *SwapDisk `json:"disk,omitempty"`
+
+	// +optional
+	File *SwapFile `json:"file,omitempty"`
+
+	// +optional
+	Zram *SwapZram `json:"zram,omitempty"`
+}
+
+type Swaps []SwapSpec
 
 // NodeSwapSpec defines the desired state of NodeSwap
 type NodeSwapSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 	// The following markers will use OpenAPI v3 schema to validate the value
 	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
 
-	// foo is an example field of NodeSwap. Edit nodeswap_types.go to remove/update
+	// Label selector for Machines on which swap will be deployed.
+	NodeSelector *metav1.LabelSelector `json:"nodeSelector,omitempty"`
+
+	Swaps Swaps `json:"swaps,omitempty"`
+
 	// +optional
-	Foo *string `json:"foo,omitempty"`
+	KubeletConfig *KubeletConfig `json:"kubeletConfig,omitempty"`
+
+	// +optional
+	LogLevel *int32 `json:"logLevel,omitempty"`
 }
 
 // NodeSwapStatus defines the observed state of NodeSwap.
@@ -65,15 +123,12 @@ type NodeSwapStatus struct {
 type NodeSwap struct {
 	metav1.TypeMeta `json:",inline"`
 
-	// metadata is a standard object metadata
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty,omitzero"`
 
-	// spec defines the desired state of NodeSwap
 	// +required
 	Spec NodeSwapSpec `json:"spec"`
 
-	// status defines the observed state of NodeSwap
 	// +optional
 	Status NodeSwapStatus `json:"status,omitempty,omitzero"`
 }
